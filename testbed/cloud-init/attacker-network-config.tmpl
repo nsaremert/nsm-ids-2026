@@ -1,0 +1,16 @@
+version: 2
+ethernets:
+  natnic:
+    match:
+      macaddress: "__NAT_MAC__"
+    dhcp4: true
+    dhcp4-overrides:
+      route-metric: 50
+  isonic:
+    match:
+      macaddress: "__ISO_MAC__"
+    addresses: [__ATTACKER_IP__/24]
+    dhcp4: false
+    dhcp6: false
+    nameservers:
+      addresses: [__HOST_IP__]

@@ -1,0 +1,51 @@
+#cloud-config
+# =============================================================================
+# attacker (Kali Linux cloud image) — saldırı araçları imajda hazır gelir
+# (nmap, hydra, sqlmap, hping3, metasploit-framework). Burada sadece erişim,
+# saat senkronu ve guest-agent ayarlanır.
+# =============================================================================
+hostname: __HOSTNAME__
+manage_etc_hosts: true
+
+users:
+  - name: __ATTACKER_USER__
+    groups: [sudo]
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    lock_passwd: false
+    ssh_authorized_keys:
+      - __SSH_PUBKEY__
+  # Kali imajının varsayılan 'kali' kullanıcısına da anahtarı ekle
+  - name: kali
+    groups: [sudo]
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    lock_passwd: false
+    ssh_authorized_keys:
+      - __SSH_PUBKEY__
+
+packages:
+  - chrony
+  - qemu-guest-agent
+  # Saldırı araçları (genericcloud minimal imajda GELMEZ → burada kur; NAT fazında)
+  - nmap
+  - hydra
+  - sqlmap
+  - hping3
+  - metasploit-framework
+  - curl
+
+write_files:
+  - path: /etc/chrony/conf.d/ids-host.conf
+    content: |
+      server __HOST_IP__ iburst
+
+runcmd:
+  - [systemctl, enable, --now, qemu-guest-agent]
+  - [systemctl, enable, --now, ssh]
+  - [systemctl, enable, --now, chrony]
+  # metasploit db (opsiyonel, exploit senaryosu için hızlandırır)
+  - bash -c 'command -v msfdb >/dev/null && msfdb init || true'
+  - touch /var/lib/cloud/instance/PROVISION_DONE
+
+final_message: "kali attacker cloud-init tamamlandi"

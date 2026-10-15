@@ -1,0 +1,44 @@
+#cloud-config
+# =============================================================================
+# attacker (Ubuntu 24.04 YEDEK) — Kali yerine kullanılırsa saldırı araçları
+# apt + Metasploit resmi kurucusu ile kurulur. Kali ile aynı arayüzü sağlar.
+# =============================================================================
+hostname: __HOSTNAME__
+manage_etc_hosts: true
+
+users:
+  - name: __ATTACKER_USER__
+    groups: [sudo]
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    lock_passwd: false
+    ssh_authorized_keys:
+      - __SSH_PUBKEY__
+
+package_update: true
+packages:
+  - nmap
+  - hydra
+  - sqlmap
+  - hping3
+  - curl
+  - chrony
+  - qemu-guest-agent
+  - git
+  - python3
+  - net-tools
+
+write_files:
+  - path: /etc/chrony/conf.d/ids-host.conf
+    content: |
+      server __HOST_IP__ iburst
+
+runcmd:
+  - [systemctl, enable, --now, qemu-guest-agent]
+  - [systemctl, enable, --now, ssh]
+  - [systemctl, enable, --now, chrony]
+  # Metasploit Framework (Rapid7 resmi nightly kurucusu) — NAT fazında internet gerekir
+  - bash -c 'curl -fsSL https://raw.githubusercontent.com/rapid7/metasploit-omnibus/master/config/templates/metasploit-framework-wrappers/msfupdate.erb -o /tmp/msfinstall && chmod +x /tmp/msfinstall && /tmp/msfinstall || echo "msf kurulumu atlandi (exploit senaryosu sinirli olabilir)"'
+  - touch /var/lib/cloud/instance/PROVISION_DONE
+
+final_message: "ubuntu attacker cloud-init tamamlandi"

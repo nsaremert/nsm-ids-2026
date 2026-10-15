@@ -1,0 +1,45 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite both the software and the dataset below."
+type: software
+title: "NSM-IDS-2026: production and analysis code"
+abstract: >-
+  Scripts to reproduce the NSM-IDS-2026 intrusion-detection dataset end to end in a
+  fully isolated KVM/libvirt lab: testbed provisioning, attack orchestration with
+  ground-truth logging, benign-traffic generation, packet/host-log capture
+  (tcpdump/Zeek/Suricata/Wazuh), the PCAP -> CICFlowMeter -> CICIDS2017-schema labeling
+  pipeline, and the technical-validation experiments (E1-E6).
+version: "1.1.0"
+date-released: "2026-10-15"
+license: MIT
+authors:
+  - given-names: "Necibe Sare"
+    family-names: "Mert"
+    affiliation: "Istanbul Topkapi University, Faculty of Engineering and Natural Sciences"
+    orcid: "https://orcid.org/0009-0009-7866-7167"
+  - given-names: "Buğra"
+    family-names: "Yılmaz"
+    affiliation: "Istanbul Topkapi University, Faculty of Engineering and Natural Sciences"
+    orcid: "https://orcid.org/0009-0003-1457-0098"
+  - given-names: "Fatih"
+    family-names: "Şahin"
+    affiliation: "Istanbul Topkapi University, Faculty of Engineering and Natural Sciences"
+    orcid: "https://orcid.org/0000-0002-8036-3156"
+keywords:
+  - intrusion detection
+  - network security
+  - CICFlowMeter
+  - CICIDS2017
+  - reproducibility
+  - dataset generation
+references:
+  - type: dataset
+    title: "NSM-IDS-2026: A CICIDS2017-compatible multi-class intrusion detection dataset"
+    authors:
+      - given-names: "Necibe Sare"
+        family-names: "Mert"
+      - given-names: "Buğra"
+        family-names: "Yılmaz"
+      - given-names: "Fatih"
+        family-names: "Şahin"
+    doi: "10.5281/zenodo.23392184"
+    year: 2026

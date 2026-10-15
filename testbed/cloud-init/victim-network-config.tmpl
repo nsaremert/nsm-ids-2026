@@ -1,0 +1,19 @@
+version: 2
+ethernets:
+  # Provizyon NIC'i (NAT 'default' ağı) — SADECE ilk kurulumda internet için.
+  # Provizyon bitince provision_vms.sh bu arayüzü söker; geriye izole NIC kalır.
+  natnic:
+    match:
+      macaddress: "__NAT_MAC__"
+    dhcp4: true
+    dhcp4-overrides:
+      route-metric: 50
+  # İzole NIC (ids-isolated) — KALICI. Gateway YOK → dışarı çıkış yok.
+  isonic:
+    match:
+      macaddress: "__ISO_MAC__"
+    addresses: [__VICTIM_IP__/24]
+    dhcp4: false
+    dhcp6: false
+    nameservers:
+      addresses: [__HOST_IP__]

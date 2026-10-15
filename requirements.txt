@@ -1,0 +1,16 @@
+# Python dependencies for the NSM-IDS-2026 pipeline and experiments.
+# Exact versions used to produce NSM-IDS-2026 v1.1 (Python 3.12).
+#   python3 -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt
+#
+# NOTE: the flow-feature extractor (CICFlowMeter) is a Java tool run via Docker,
+# NOT a pip package — see README (pinned to commit acaf8bea8611fb4b996b4d33964dfd9155d9efdf).
+
+numpy==2.5.4
+pandas==3.0.6
+scikit-learn==1.9.1
+xgboost==3.4.1
+matplotlib==3.11.2
+scipy==1.18.1
+nfstream==6.6.0
+pyarrow==26.0.0
+joblib==1.6.0

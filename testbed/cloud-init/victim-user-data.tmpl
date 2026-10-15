@@ -1,0 +1,82 @@
+#cloud-config
+# =============================================================================
+# victim (Ubuntu Server 24.04) — kurban servisleri + Wazuh agent hedefi.
+# Placeholder'lar provision_vms.sh tarafından doldurulur.
+# NOT: Paket kurulumu/İmaj indirmesi provizyon fazında (NAT NIC açıkken) olur;
+#      sonra NAT NIC sökülür ve VM tamamen izole kalır.
+# =============================================================================
+hostname: __HOSTNAME__
+manage_etc_hosts: true
+
+# Hydra SSH kaba-kuvvet senaryosunun çalışabilmesi için parola auth AÇIK.
+# (Yalnızca izole lab; 'svc' bilerek zayıf parolalı sentetik hedef hesaptır.)
+ssh_pwauth: true
+
+users:
+  - name: __VICTIM_USER__
+    groups: [sudo, docker]
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    lock_passwd: false
+    ssh_authorized_keys:
+      - __SSH_PUBKEY__
+  # Kaba-kuvvet hedefi: zayıf parolalı lab hesabı (wordlist içinde yer alır).
+  - name: __BRUTE_USER__
+    shell: /bin/bash
+    lock_passwd: false
+    plain_text_passwd: "__BRUTE_PASSWORD__"
+
+package_update: true
+package_upgrade: false
+packages:
+  - openssh-server
+  - vsftpd
+  - mariadb-server
+  - docker.io
+  - chrony
+  - curl
+  - python3
+  - net-tools
+  - qemu-guest-agent
+
+write_files:
+  # Host'u (10.10.10.1) NTP referansı yap → etiketleme için saat senkronu
+  - path: /etc/chrony/conf.d/ids-host.conf
+    content: |
+      server __HOST_IP__ iburst
+  # vsftpd: yerel kullanıcı FTP (ek bir taranabilir servis)
+  - path: /etc/vsftpd.conf
+    content: |
+      listen=YES
+      listen_ipv6=NO
+      anonymous_enable=NO
+      local_enable=YES
+      write_enable=YES
+      chroot_local_user=YES
+      allow_writeable_chroot=YES
+      xferlog_enable=YES
+      pam_service_name=vsftpd
+  # MariaDB: uzaktan (izole ağ) bağlanabilsin → benign DB trafiği + taranabilir
+  - path: /etc/mysql/mariadb.conf.d/99-lab.cnf
+    content: |
+      [mysqld]
+      bind-address = 0.0.0.0
+
+runcmd:
+  - [systemctl, enable, --now, qemu-guest-agent]
+  - [systemctl, enable, --now, ssh]
+  - [systemctl, enable, --now, vsftpd]
+  - [systemctl, enable, --now, chrony]
+  - [systemctl, enable, --now, docker]
+  - [systemctl, enable, --now, mariadb]
+  # Lab veritabanı + izole ağdan bağlanabilen kullanıcı (benign DB sorguları için)
+  - mysql -e "CREATE DATABASE IF NOT EXISTS labdb; CREATE TABLE IF NOT EXISTS labdb.items(id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(64)); INSERT INTO labdb.items(name) VALUES('alpha'),('beta'),('gamma');"
+  - mysql -e "CREATE USER IF NOT EXISTS 'labuser'@'10.10.10.%' IDENTIFIED BY 'labpass'; GRANT SELECT,INSERT ON labdb.* TO 'labuser'@'10.10.10.%'; FLUSH PRIVILEGES;"
+  # DVWA (zafiyetli web uygulaması) — KENDİ MySQL'ini içeren, tek-container imaj
+  # (ghcr.io/digininja/dvwa AYRI db container ister → tek başına çalışmaz).
+  - docker pull vulnerables/web-dvwa:latest
+  - docker run -d --name dvwa --restart unless-stopped -p 80:80 vulnerables/web-dvwa:latest
+  # Provizyonun bittiğini işaretle (provision_vms.sh bunu bekler)
+  - touch /var/lib/cloud/instance/PROVISION_DONE
+
+final_message: "victim cloud-init tamamlandi (uptime: $UPTIME)"

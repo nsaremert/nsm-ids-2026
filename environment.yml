@@ -1,0 +1,19 @@
+# Conda environment for the NSM-IDS-2026 pipeline and experiments.
+#   conda env create -f environment.yml && conda activate nsm-ids-2026
+# (The CICFlowMeter feature extractor is a Java/Docker tool, not a conda package.)
+name: nsm-ids-2026
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - pip:
+      - numpy==2.5.4
+      - pandas==3.0.6
+      - scikit-learn==1.9.1
+      - xgboost==3.4.1
+      - matplotlib==3.11.2
+      - scipy==1.18.1
+      - nfstream==6.6.0
+      - pyarrow==26.0.0
+      - joblib==1.6.0

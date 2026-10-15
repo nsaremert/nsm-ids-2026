@@ -1,0 +1,15 @@
+<!--
+  ids-isolated: TAMAMEN İZOLE libvirt ağı.
+  - <forward> YOK  → NAT yok, routing yok. VM'ler dış dünyaya ve host LAN'ına
+    ERİŞEMEZ. Host bu ağda yalnızca 10.10.10.1 olarak görünür (sensör rolü).
+  - DHCP YOK       → tüm IP'ler cloud-init ile sabit atanır (deterministik
+    etiketleme için). İstenirse <ip> altına <dhcp> eklenebilir.
+  - Köprü: virbr-ids → tcpdump/Zeek/Suricata host'ta bu arayüzü dinler.
+
+  DOĞRULAMA: `virsh net-dumpxml ids-isolated | grep -c forward` => 0 olmalı.
+-->
+<network>
+  <name>ids-isolated</name>
+  <bridge name="virbr-ids" stp="on" delay="0"/>
+  <ip address="10.10.10.1" netmask="255.255.255.0"/>
+</network>
