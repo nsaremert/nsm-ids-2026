@@ -16,12 +16,17 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent.parent          # ~/ids-pilot
 DATA = ROOT / "dataset"
 EXP = ROOT / "experiments"
-RESULTS = EXP / "results"
-FIGURES = EXP / "figures"
-TABLES = EXP / "tables"
+# Output dirs carry an optional suffix so the fragment-sensitivity run (set
+# NSM_OUT_SUFFIX=_withfrag) writes beside, not over, the main (fragment-excluded) run.
+OUT_SUFFIX = os.environ.get("NSM_OUT_SUFFIX", "")
+RESULTS = EXP / f"results{OUT_SUFFIX}"
+FIGURES = EXP / f"figures{OUT_SUFFIX}"
+TABLES = EXP / f"tables{OUT_SUFFIX}"
 for _d in (RESULTS, FIGURES, TABLES):
     _d.mkdir(parents=True, exist_ok=True)
 
+ML_V12 = DATA / "NSM-IDS-2026_ML_v1.2.csv"
+FULL_V12 = DATA / "NSM-IDS-2026_full_v1.2.csv"
 ML_V11 = DATA / "NSM-IDS-2026_ML_v1.1.csv"
 FULL_V11 = DATA / "NSM-IDS-2026_full_v1.1.csv"
 ML_V10 = DATA / "NSM-IDS-2026_ML.csv"
@@ -30,6 +35,13 @@ PORTABLE = DATA / "NSM-IDS-2026_portable_features.txt"
 SPLIT = DATA / "NSM-IDS-2026_split_sessions.csv"
 WAZUH = ROOT / "data" / "wazuh_logs"
 GROUND_TRUTH = ROOT / "data" / "scenarios"
+
+# v1.2 metadata columns — never model inputs. split_fragment marks CICFlowMeter
+# reverse-direction continuation flows (first-FIN split); see data_dictionary / README.
+METADATA_COLS = ["session_id", "split_fragment", "parent_label"]
+FRAG_TOL_MS = 2000      # split-fragment time tolerance (= §1.4 window tolerance)
+# Main analysis excludes split fragments; set NSM_INCLUDE_FRAGMENTS=1 for the sensitivity run.
+EXCLUDE_FRAGMENTS = os.environ.get("NSM_INCLUDE_FRAGMENTS", "0") != "1"
 
 # ----------------------------------------------------------------------------- seeds
 SEEDS = [0, 1, 2]
@@ -48,12 +60,24 @@ def save_seeds():
 IDENTIFIERS = ["Flow ID", "Source IP", "Source Port", "Destination IP", "Protocol", "Timestamp"]
 
 
-def load_ml_v11():
-    """Return (df, X(66 feats, DataFrame), y(Series), sid(np.array), feats66(list))."""
-    df = pd.read_csv(ML_V11)
-    feats = [c for c in df.columns if c not in ("session_id", "Label")]
+def load_ml(exclude_fragments=None):
+    """Load the v1.2 ML table. session_id/split_fragment/parent_label are METADATA (never
+    features). By default (main analysis) rows with split_fragment==1 are dropped; pass
+    exclude_fragments=False to keep all rows (e.g. E1 describe). The env var
+    NSM_INCLUDE_FRAGMENTS=1 flips the session-wide default (sensitivity run).
+    Returns (df, X(66 feats, DataFrame), y(Series), sid(np.array), feats66(list))."""
+    if exclude_fragments is None:
+        exclude_fragments = EXCLUDE_FRAGMENTS
+    df = pd.read_csv(ML_V12)
+    if exclude_fragments and "split_fragment" in df.columns:
+        df = df[df["split_fragment"] == 0].reset_index(drop=True)
+    feats = [c for c in df.columns if c not in METADATA_COLS + ["Label"]]
     X = df[feats].apply(pd.to_numeric, errors="coerce").replace([np.inf, -np.inf], np.nan).fillna(0.0)
     return df, X, df["Label"].astype(str), df["session_id"].to_numpy(), feats
+
+
+# back-compat alias: all modeling scripts call load_ml_v11(); it now serves v1.2.
+load_ml_v11 = load_ml
 
 
 def portable_features():

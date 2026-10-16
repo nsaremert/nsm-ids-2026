@@ -15,11 +15,14 @@ from sklearn.metrics import f1_score, recall_score
 from sklearn.model_selection import train_test_split
 
 plt = C.setup_mpl()
-# v1.1 (session_id + Label + 66) and v1.0 ML (78 + Label), row-aligned
-df11, X66, y, sid, feats66 = C.load_ml_v11()
+# v1.2 (session_id + Label + 66, ALL rows) and v1.0 ML (78 + Label), row-aligned.
+# This experiment isolates the Active/Idle/Subflow COLUMN fix, so it keeps all rows and
+# uses one consistent target (v1.2 labels) for both the 78- and 66-feature matrices.
+df11, X66, y, sid, feats66 = C.load_ml(exclude_fragments=False)
 v10 = pd.read_csv(C.ML_V10)
-assert len(v10) == len(df11) and (v10["Label"].astype(str).values == y.values).all(), \
-    "v1.0 ve v1.1 satırları hizalı değil"
+_ndiff = int((v10["Label"].astype(str).values != y.values).sum())
+assert len(v10) == len(df11), "v1.0 ve v1.2 satır sayısı farklı"
+assert _ndiff <= 893, f"beklenmeyen etiket farkı ({_ndiff}); v1.2 FIX A yalnız 893 akışı değiştirir"
 y = y.values
 classes = C.classes_sorted(y)
 feats78 = [c for c in v10.columns if c != "Label"]
@@ -82,21 +85,21 @@ C.savefig(fig, "e4_idle_leak_by_class")
 
 # (c) session-based RF: v1.0 (78) vs v1.1 (66)
 res = {}
-for tag, Xf in [("v1.0 (78)", X78), ("v1.1 (66)", X66)]:
+for tag, Xf in [("v1.0 (78)", X78), ("v1.2 (66)", X66)]:
     yp = C.train_predict("RandomForest", 0, Xf.iloc[s_tr], y[s_tr], Xf.iloc[s_te], trees=200)
     rec = recall_score(y[s_te], yp, average=None, labels=classes, zero_division=0)
     res[tag] = {"macro_F1": round(f1_score(y[s_te], yp, average="macro"), 4),
                 **{c: round(v, 3) for c, v in zip(classes, rec)}}
 cmp = pd.DataFrame(res)
 cmp.index.name = "metric / per-class recall"
-cmp.to_csv(C.RESULTS / "e4_v10_vs_v11_rf.csv")
-C.write_table(cmp, "e4_v10_vs_v11_rf", floatfmt="%.3f",
-              caption="Session-based RandomForest (sessions 3,7,11 test): v1.0 78 feats vs v1.1 66 feats.")
+cmp.to_csv(C.RESULTS / "e4_v10_vs_v12_rf.csv")
+C.write_table(cmp, "e4_v10_vs_v12_rf", floatfmt="%.3f",
+              caption="Session-based RandomForest (sessions 3,7,11 test): v1.0 78 feats vs v1.2 66 feats.")
 
 json.dump({"single_feature": rows,
            "idle_leak_by_class": by["percent"].to_dict(),
-           "v10_vs_v11_macroF1": {k: res[k]["macro_F1"] for k in res},
+           "v10_vs_v12_macroF1": {k: res[k]["macro_F1"] for k in res},
            "outputs": ["e4_single_feature_corrupted.{csv,md,tex,pdf,png}",
-                       "e4_idle_leak_by_class.{csv,md,tex,pdf,png}", "e4_v10_vs_v11_rf.{csv,md,tex}"]},
+                       "e4_idle_leak_by_class.{csv,md,tex,pdf,png}", "e4_v10_vs_v12_rf.{csv,md,tex}"]},
           open(C.RESULTS / "e4_meta.json", "w"), indent=2)
-print("[E4] DONE  v10_vs_v11 macroF1:", {k: res[k]["macro_F1"] for k in res})
+print("[E4] DONE  v10_vs_v12 macroF1:", {k: res[k]["macro_F1"] for k in res})

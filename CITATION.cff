@@ -8,8 +8,8 @@ abstract: >-
   ground-truth logging, benign-traffic generation, packet/host-log capture
   (tcpdump/Zeek/Suricata/Wazuh), the PCAP -> CICFlowMeter -> CICIDS2017-schema labeling
   pipeline, and the technical-validation experiments (E1-E6).
-version: "1.1.0"
-date-released: "2026-10-15"
+version: "1.2.0"
+date-released: "2026-10-16"
 license: MIT
 authors:
   - given-names: "Necibe Sare"

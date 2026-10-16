@@ -1,18 +1,22 @@
 #!/usr/bin/env python3
-"""baseline.py — NSM-IDS-2026 baseline IDS classifier (v1.1).
+"""baseline.py — NSM-IDS-2026 baseline IDS classifier (v1.2).
 
-Loads the v1.1 ML table (`session_id` + 66 CICIDS2017 features + `Label`), trains a
-RandomForest (and XGBoost if installed), and reports accuracy, macro-F1, a binary
-false-alarm rate (FAR), a per-class classification report, and a confusion matrix.
+Loads the v1.2 ML table (`session_id` + `split_fragment` + `parent_label` + 66 CICIDS2017
+features + `Label`), trains a RandomForest (and XGBoost if installed), and reports accuracy,
+macro-F1, a binary false-alarm rate (FAR), a per-class classification report, and a confusion
+matrix.
 
 By default it uses a **session-based split** (the honest evaluation for this dataset),
-reading the `session_id` column directly — no timestamp parsing needed. `session_id` is
-treated as metadata and is never used as a feature.
+reading the `session_id` column directly — no timestamp parsing needed. `session_id`,
+`split_fragment` and `parent_label` are metadata and are never used as features. By default
+reverse-direction continuation flows (`split_fragment==1`) are excluded from train and test;
+pass `--no-exclude-fragments` to keep them (sensitivity analysis).
 
 Usage
 -----
-  python baseline.py                                        # NSM-IDS-2026_ML_v1.1.csv, session split
-  python baseline.py --data NSM-IDS-2026_ML_v1.1.csv
+  python baseline.py                                        # NSM-IDS-2026_ML_v1.2.csv, session split
+  python baseline.py --data NSM-IDS-2026_ML_v1.2.csv
+  python baseline.py --no-exclude-fragments                 # include split fragments
   python baseline.py --features portable                    # only the 62 portable features
   python baseline.py --split random --model rf              # random stratified split
   python baseline.py --test-sessions 3,7,11 --trees 300
@@ -35,16 +39,24 @@ from sklearn.metrics import accuracy_score, classification_report, f1_score
 from sklearn.model_selection import train_test_split
 
 
-def load(path: str):
+META = ("Label", "session_id", "split_fragment", "parent_label")  # metadata, NOT features
+
+
+def load(path: str, exclude_fragments: bool = True):
     try:
         df = pd.read_csv(path)
     except FileNotFoundError:
         sys.exit(f"Veri bulunamadı: {path}  (--data ile yol ver)")
     if "Label" not in df.columns:
         sys.exit("CSV'de 'Label' kolonu yok.")
+    if exclude_fragments and "split_fragment" in df.columns:
+        n0 = len(df)
+        df = df[df["split_fragment"] == 0].reset_index(drop=True)
+        print(f"split-fragment hariç tutuldu: {n0 - len(df):,} satır düşürüldü → {len(df):,} kaldı "
+              f"(--no-exclude-fragments ile kapat)")
     y = df["Label"].astype(str)
     sid = df["session_id"].to_numpy() if "session_id" in df.columns else None
-    meta = [c for c in ("Label", "session_id") if c in df.columns]  # session_id metadata, öznitelik DEĞİL
+    meta = [c for c in META if c in df.columns]  # session_id/split_fragment/parent_label = metadata
     X = df.drop(columns=meta).apply(pd.to_numeric, errors="coerce")
     # Bu sürümde inf/NaN yok; yeniden-üretilen veride olabilir diye güvenlik için temizle.
     X = X.replace([np.inf, -np.inf], np.nan).fillna(0.0)
@@ -75,7 +87,9 @@ def report(name: str, y_true, y_pred) -> float:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="NSM-IDS-2026 baseline classifier")
-    ap.add_argument("--data", default="NSM-IDS-2026_ML_v1.1.csv")
+    ap.add_argument("--data", default="NSM-IDS-2026_ML_v1.2.csv")
+    ap.add_argument("--exclude-fragments", action=argparse.BooleanOptionalAction, default=True,
+                    help="split_fragment==1 satırlarını eğitim/testten çıkar (varsayılan: açık)")
     ap.add_argument("--features", choices=["all", "portable"], default="all",
                     help="portable: yalnız NSM-IDS-2026_portable_features.txt sütunlarını kullan")
     ap.add_argument("--portable-file", default="NSM-IDS-2026_portable_features.txt")
@@ -89,7 +103,7 @@ def main() -> int:
     ap.add_argument("--sample", type=int, default=0, help="hız için N satır örnekle (yalnız random)")
     a = ap.parse_args()
 
-    X, y, sid = load(a.data)
+    X, y, sid = load(a.data, exclude_fragments=a.exclude_fragments)
     if a.features == "portable":
         pf = a.portable_file
         if not os.path.isabs(pf) and not os.path.exists(pf):

@@ -120,7 +120,11 @@ fig.tight_layout(rect=[0, 0.05, 1, 1])
 C.savefig(fig, "e6_alert_intensity_timeline")
 
 # ---- (c) multi-modal: per-flow host features
-full = pd.read_csv(C.FULL_V11, usecols=["Timestamp", "session_id", "Flow Duration", "Label"])
+# Read full_v1.2 and apply the SAME fragment filter as load_ml() so host features (H),
+# built from `full`, stay row-aligned with the network matrix X66.
+full = pd.read_csv(C.FULL_V12, usecols=["Timestamp", "session_id", "Flow Duration", "Label", "split_fragment"])
+if C.EXCLUDE_FRAGMENTS:
+    full = full[full["split_fragment"] == 0].reset_index(drop=True)
 tsf = pd.to_datetime(full["Timestamp"], format="%d/%m/%Y %I:%M:%S %p", errors="coerce")
 flow_ms = ((tsf - pd.Timestamp("1970-01-01")).dt.total_seconds() * 1000.0).to_numpy()
 dur_ms = pd.to_numeric(full["Flow Duration"], errors="coerce").fillna(0).to_numpy() / 1000.0

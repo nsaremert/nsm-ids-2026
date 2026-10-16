@@ -7,8 +7,8 @@ import common as C
 
 C.save_seeds()
 plt = C.setup_mpl()
-df, X, y, sid, feats = C.load_ml_v11()
-full = pd.read_csv(C.FULL_V11, usecols=["Timestamp", "session_id", "Label"])
+df, X, y, sid, feats = C.load_ml(exclude_fragments=False)   # describe the full released dataset
+full = pd.read_csv(C.FULL_V12, usecols=["Timestamp", "session_id", "Label", "split_fragment", "parent_label"])
 ts = pd.to_datetime(full["Timestamp"], format="%d/%m/%Y %I:%M:%S %p", errors="coerce")
 full["epoch"] = (ts - pd.Timestamp("1970-01-01")).dt.total_seconds()
 classes = C.classes_sorted(y)
@@ -29,6 +29,27 @@ ax.set_ylabel("Flows"); ax.set_title("Class distribution")
 for i, v in enumerate(vc.values):
     ax.text(i, v, f"{v:,}", ha="center", va="bottom", fontsize=7)
 C.savefig(fig, "e1_class_distribution_overall")
+
+# ---------------------------------------------------------------- split-fragment summary
+frag = full["split_fragment"] == 1
+fr = pd.DataFrame({
+    "flows": [int(len(full)), int(frag.sum()), int((~frag).sum())],
+    "percent": [100.0, round(100 * frag.mean(), 2), round(100 * (~frag).mean(), 2)],
+}, index=["all flows", "split_fragment=1", "split_fragment=0 (kept in main)"])
+fr.index.name = "subset"
+fr.to_csv(C.RESULTS / "e1_split_fragment_summary.csv")
+C.write_table(fr, "e1_split_fragment_summary", floatfmt="%.2f",
+              caption="Split-fragment flag (reverse-direction CICFlowMeter continuations, tol=2 s). "
+                      "Main experiments exclude split_fragment=1.")
+# parent_label distribution of fragments (what the forward half was)
+pl = full.loc[frag, "parent_label"].value_counts()
+pl_df = pd.DataFrame({"fragments": pl.astype(int),
+                      "percent": (100 * pl / frag.sum()).round(2)})
+pl_df.index.name = "parent_label"
+pl_df.to_csv(C.RESULTS / "e1_fragment_parent_label.csv")
+C.write_table(pl_df, "e1_fragment_parent_label", floatfmt="%.2f",
+              caption="Forward-half (parent) label of the split-fragment flows.")
+frag_attack_parent = int((full.loc[frag, "parent_label"].astype(str) != "BENIGN").sum())
 
 # ---------------------------------------------------------------- per-session summary
 rows = []
@@ -87,6 +108,10 @@ C.savefig(fig, "e1_attack_timeline")
 
 print(json.dumps({
     "total_flows": int(len(y)), "classes": len(classes),
+    "split_fragments": int(frag.sum()),
+    "split_fragments_pct": round(100 * frag.mean(), 2),
+    "split_fragments_attack_parent": frag_attack_parent,
+    "kept_in_main_experiments": int((~frag).sum()),
     "sessions": 12, "gt_labels": gt_labels,
     "note": "DoS Hulk appears in ground truth (scheduled) but produced ~0 flows (HULK not installed)."
         if "DoS Hulk" in gt_labels else "",

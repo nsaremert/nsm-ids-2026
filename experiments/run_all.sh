@@ -17,7 +17,8 @@ for e in E1_describe/e1.py \
          E3_protocol/e3.py \
          E4_fix_validation/e4.py \
          E5_feature_analysis/e5.py \
-         E6_host_modality/e6.py; do
+         E6_host_modality/e6.py \
+         E8_fragment_leak/e8.py; do
   echo "######## RUN $e  $(date +%H:%M:%S) ########"
   $PY "experiments/$e" || { echo "  ! $e FAILED"; }
 done

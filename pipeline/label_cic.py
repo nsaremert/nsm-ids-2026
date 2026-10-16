@@ -29,6 +29,16 @@ def _port_wild(v) -> bool:
     return s in ("", "*", "0", "any", "nan", "none")
 
 
+def _port_list(v):
+    """Parse a ground-truth dst_port cell. Returns None for a wildcard (matches any port),
+    otherwise a list of floats. Supports a single port ('21') or several separated by
+    comma/semicolon/space ('21,22,80') — e.g. the Infiltration NSE recon on 21/22/80 (v1.2)."""
+    import re as _re
+    if _port_wild(v):
+        return None
+    return [float(p) for p in _re.split(r"[;,/\s]+", str(v).strip()) if p.strip()]
+
+
 def parse_ts_to_epoch_ms(series: pd.Series, offset_s: float) -> pd.Series:
     """CICFlowMeter damgası ('dd/MM/yyyy hh:mm:ss AM/PM') → epoch ms.
     Docker container TZ=UTC olduğundan damga UTC'dir (offset_s=0). Yerel tz'de
@@ -84,8 +94,9 @@ def main() -> int:
         w0, w1 = int(r["start_ts"]) - tol, int(r["end_ts"]) + tol
         time_ok = flow_ms.between(w0, w1)
         ip_ok = (src == str(r["src_ip"])) & (dst == str(r["dst_ip"]))
-        port_ok = pd.Series(True, index=df.index) if _port_wild(r["dst_port"]) \
-            else (dport == float(r["dst_port"]))
+        _pl = _port_list(r["dst_port"])
+        port_ok = pd.Series(True, index=df.index) if _pl is None \
+            else dport.isin(_pl)
         m = time_ok.fillna(False) & ip_ok & port_ok
         apply = m & (labels == "BENIGN")
         labels[apply] = str(r["label"])

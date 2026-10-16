@@ -66,7 +66,9 @@ def main():
         ("r02", "SSH-Patator",      "02_bruteforce_ssh.sh", [VIC, bruser, brpass], "22", "hydra"),
         ("r03", "Web Attack",       "03_web_attack.sh",     [VIC],                 "80", "sqlmap"),
         ("r04", "DoS SYN",          "04_dos.sh",            [VIC, str(dosdur)],    "80", "hping3"),
-        ("r05", "Infiltration",     "05_exploit.sh",        [VIC],                 "21", "metasploit"),
+        # Infiltration = nmap -p 21,22,80 NSE recon + vsftpd 2.3.4 backdoor; label all three
+        # recon ports so the HTTP/SSH NSE probes are not left BENIGN (v1.2 FIX A).
+        ("r05", "Infiltration",     "05_exploit.sh",        [VIC],                 "21,22,80", "nmap-nse+metasploit"),
         ("r06", "FTP-Patator",      "06_ftp_patator.sh",    [VIC, bruser, brpass], "21", "hydra"),
         ("r07", "DoS Slowloris",    "07_dos_slowloris.sh",  [VIC, slowdur],        "80", "slowhttptest"),
         ("r08", "DoS Slowhttptest", "08_dos_slowhttp.sh",   [VIC, slowdur],        "80", "slowhttptest"),
