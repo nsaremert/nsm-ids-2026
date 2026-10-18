@@ -84,6 +84,25 @@ def portable_features():
     return [ln.strip() for ln in open(PORTABLE) if ln.strip()]
 
 
+def ground_truth_files():
+    """Canonical per-session ground-truth CSVs — one per capture session, sorted
+    chronologically by first attack start (so index == session_id). Deduplicates by session
+    start time so a stray extra copy (e.g. an older GT revision left in the folder) cannot be
+    read twice: read the v1.2 ground truth ONCE."""
+    import glob as _glob
+    seen, out = set(), []
+    for f in sorted(_glob.glob(str(GROUND_TRUTH / "ground_truth_*.csv"))):
+        try:
+            s = int(pd.read_csv(f, usecols=["start_ts"])["start_ts"].min())
+        except Exception:
+            continue
+        if s in seen:
+            continue
+        seen.add(s); out.append((s, f))
+    out.sort(key=lambda t: t[0])
+    return [f for _, f in out]
+
+
 def classes_sorted(y):
     return sorted(pd.Series(y).unique())
 

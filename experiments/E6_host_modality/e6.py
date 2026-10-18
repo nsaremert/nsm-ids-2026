@@ -18,8 +18,7 @@ from sklearn.metrics import f1_score
 plt = C.setup_mpl()
 
 # ---- align sessions (0..11 chronological) to ground-truth and alert files by TS
-gt_files = sorted(glob.glob(str(C.GROUND_TRUTH / "ground_truth_*.csv")),
-                  key=lambda f: pd.read_csv(f)["start_ts"].min())
+gt_files = C.ground_truth_files()   # one GT per session, deduped + chronological (read GT once)
 alert_files = sorted(glob.glob(str(C.WAZUH / "alerts_2026*.json")))  # exclude stray alerts.json
 # map by TS token in filename
 def ts_of(path):

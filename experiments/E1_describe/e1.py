@@ -81,7 +81,7 @@ ax.legend(ncol=2, bbox_to_anchor=(1.01, 1.0), loc="upper left", frameon=False)
 C.savefig(fig, "e1_class_distribution_per_session")
 
 # ---------------------------------------------------------------- attack timeline (Gantt)
-gt_files = sorted(glob.glob(str(C.GROUND_TRUTH / "ground_truth_*.csv")))
+gt_files = C.ground_truth_files()   # one GT per session, deduped + chronological (session_id order)
 gts = []
 for f in gt_files:
     g = pd.read_csv(f)
